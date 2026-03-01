@@ -3,7 +3,7 @@ import io.cucumber.java.en.*;
 import org.openqa.selenium.Alert;
 import org.testng.Assert;
 //import utils.Base;
-import org.openqa.selenium.By;
+import org.openqa.selenium.*;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.JavascriptExecutor;
@@ -11,8 +11,8 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.Select;
-
 import java.time.Duration;
+
 
 public class Registration {
     private WebDriver driver;
@@ -136,17 +136,40 @@ public class Registration {
     // --- Minimal stub step definitions for approval/admin flow ---
     @Given("^admin user logs in as admin (.+) with password (.+)$")
     public void admin_user_logs_in_as_admin_with_password(String adminemail, String adminpassword) {
+        driver.findElement(By.id("login-email")).sendKeys(adminemail);
+        driver.findElement(By.id("login-password")).sendKeys(adminpassword);
         // Minimal stub: log values; real implementation should perform login actions
         System.out.println("[stub] admin login: " + adminemail + " / " + adminpassword);
     }
 
     @And("click on admin button")
     public void click_on_admin_button() {
+        driver.findElement(By.id("login-submit")).click();
         System.out.println("[stub] click on admin button");
     }
 
     @And("click on admin panel")
     public void click_on_admin_panel() {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+         {
+
+            // 1) Locate and click the user-pill button
+            By userPillBtn = By.cssSelector("button.user-pill");
+            WebElement pill = wait.until(ExpectedConditions.elementToBeClickable(userPillBtn));
+            pill.click();
+
+            // 2) Wait for dropdown to be visible/open
+            // Prefer the "open" modifier to avoid false positives
+            By dropdownOpen = By.cssSelector("div.nav-dropdown.open");
+            WebElement dropdown = wait.until(ExpectedConditions.visibilityOfElementLocated(dropdownOpen));
+
+            // 3) Click the "Admin Panel" option by text
+            // This XPath is resilient regardless of the tag used for the item.
+            By adminPanelItem = By.xpath("//div[contains(@class,'nav-dropdown') and contains(@class,'open')]//*[normalize-space(text())='Admin Panel']");
+            WebElement admin = wait.until(ExpectedConditions.elementToBeClickable(adminPanelItem));
+            admin.click();
+        }
         System.out.println("[stub] click on admin panel");
     }
 
