@@ -133,4 +133,46 @@ public class Registration {
         driver.quit();
     }
 
+    // --- Minimal stub step definitions for approval/admin flow ---
+    @Given("^admin user logs in as admin (.+) with password (.+)$")
+    public void admin_user_logs_in_as_admin_with_password(String adminemail, String adminpassword) {
+        // Minimal stub: log values; real implementation should perform login actions
+        System.out.println("[stub] admin login: " + adminemail + " / " + adminpassword);
+    }
+
+    @And("click on admin button")
+    public void click_on_admin_button() {
+        System.out.println("[stub] click on admin button");
+    }
+
+    @And("click on admin panel")
+    public void click_on_admin_panel() {
+        System.out.println("[stub] click on admin panel");
+    }
+
+    @And("^enter email (.+) in the search box$")
+    public void enter_email_in_the_search_box(String email) {
+        System.out.println("[stub] enter email in search box: " + email);
+    }
+
+    @And("verify that the new register user is displayed in the search results")
+    public void verify_that_the_new_register_user_is_displayed_in_the_search_results() {
+        System.out.println("[stub] verify new user displayed in search results");
+    }
+
+    @And("verify if the account status for the new user is \"Inactive\"")
+    public void verify_if_the_account_status_for_the_new_user_is_inactive() {
+        System.out.println("[stub] verify account status is Inactive");
+    }
+
+    @And("on inactive status to trigger activation popup")
+    public void on_inactive_status_to_trigger_activation_popup() {
+        System.out.println("[stub] trigger activation popup on inactive status");
+    }
+
+    @And("click ok button on the activation popup")
+    public void click_ok_button_on_the_activation_popup() {
+        System.out.println("[stub] click OK on activation popup");
+    }
+
 }
