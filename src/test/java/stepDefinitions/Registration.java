@@ -8,6 +8,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.Select;
@@ -19,7 +20,11 @@ public class Registration {
 
     @Given("the admin is on the login page")
     public void the_admin_is_on_the_login_page() {
-            driver = new ChromeDriver();
+            ChromeOptions options = new ChromeOptions();
+            // start maximized; also call maximize() after creating the driver for robustness
+            options.addArguments("--start-maximized");
+            driver = new ChromeDriver(options);
+            driver.manage().window().maximize();
             driver.get("https://ndosisimplifiedautomation.vercel.app/#practice");
 
     }
@@ -123,7 +128,7 @@ public class Registration {
         // Print and verify the message
         System.out.println("Alert message: " + alertMessage);
         Assert.assertNotNull(alertMessage, "Alert message is null");
-        Assert.assertTrue(alertMessage.contains("successfully") || alertMessage.contains("pending admin approval") || alertMessage.length() > 0,
+        Assert.assertTrue(!alertMessage.isEmpty() && (alertMessage.contains("successfully") || alertMessage.contains("pending admin approval")),
                 "Registration message not displayed or invalid");
 
         // Accept (Click OK)
@@ -141,7 +146,7 @@ public class Registration {
         // Minimal stub: log values; real implementation should perform login actions
         System.out.println("[stub] admin login: " + adminemail + " / " + adminpassword);
     }
-
+//login button
     @And("click on admin button")
     public void click_on_admin_button() {
         driver.findElement(By.id("login-submit")).click();
@@ -149,27 +154,12 @@ public class Registration {
     }
 
     @And("click on admin panel")
-    public void click_on_admin_panel() {
+    public void click_on_admin_panel() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        driver.findElement(By.xpath("//button[contains(@class,'user-pill')]")).click();
+        Thread.sleep(1000);
+        driver.findElement(By.xpath("//button[@class='nav-dropdown-item']/span[text()='Admin Panel']/parent::button")).click();
 
-         {
-
-            // 1) Locate and click the user-pill button
-            By userPillBtn = By.cssSelector("button.user-pill");
-            WebElement pill = wait.until(ExpectedConditions.elementToBeClickable(userPillBtn));
-            pill.click();
-
-            // 2) Wait for dropdown to be visible/open
-            // Prefer the "open" modifier to avoid false positives
-            By dropdownOpen = By.cssSelector("div.nav-dropdown.open");
-            WebElement dropdown = wait.until(ExpectedConditions.visibilityOfElementLocated(dropdownOpen));
-
-            // 3) Click the "Admin Panel" option by text
-            // This XPath is resilient regardless of the tag used for the item.
-            By adminPanelItem = By.xpath("//div[contains(@class,'nav-dropdown') and contains(@class,'open')]//*[normalize-space(text())='Admin Panel']");
-            WebElement admin = wait.until(ExpectedConditions.elementToBeClickable(adminPanelItem));
-            admin.click();
-        }
         System.out.println("[stub] click on admin panel");
     }
 
