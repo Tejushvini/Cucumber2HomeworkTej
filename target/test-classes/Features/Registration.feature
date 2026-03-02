@@ -8,7 +8,7 @@ Feature: User Registration
     Then the admin is on the registration page
     When the admin enters valid firstname <firstname>
     And the admin enters valid lastname <lastname>
-    And the admin enters valid email <email>
+    And the admin enters valid email AUTO_GENERATE
     And the admin enter valid first password <fpassword>
     And the admin enter valid confirm password <confirmpassword>
     And the confirm password is the same as the password
@@ -17,24 +17,19 @@ Feature: User Registration
     Then the successful registration message is displayed
 
     Examples:
-      | firstname | lastname | email               | fpassword  | confirmpassword | group             |
-      | John      | Doe      | john103@gmail.com   | @123456789 | @123456789      | Group T (2026)    |
+      | firstname | lastname | fpassword  | confirmpassword | group             |
+      | Tej      | Doe      | @123456789 | @123456789      | Group T (2026)    |
 
   # Approval / post-registration actions moved into a separate scenario
-  Scenario Outline: Approve the new user (admin flow)
+  Scenario: Approve the new user (admin flow) - Search by Generated Email
     Given the admin is on the login page
-    And admin user logs in as admin <adminemail> with password <adminpassword>
+    And admin user logs in as admin admin@gmail.com with password @12345678
     And click on admin button
     And click on admin panel
-    And enter email <email> in the search box
-    And verify that the new register user is displayed in the search results
+    And click on Approvals button
+    And the admin searches for the registered user by generated email
+    And verify the generated email appears in search results
     And verify if the account status for the new user is "Inactive"
     And on inactive status to trigger activation popup
     And click ok button on the activation popup
 
-    Examples:
-      | adminemail         | adminpassword | email             |
-      | admin@gmail.com  | @12345678  | john103@gmail.com |
-
-  # Note: The approval steps must have matching step definitions in Java (stepDefinitions/Registration.java or another step file).
-  # If those step definitions are not present, implement them or remove/replace these steps with ones that exist.

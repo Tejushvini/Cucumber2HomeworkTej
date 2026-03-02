@@ -12,11 +12,19 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.Select;
+import utils.EmailGenerator;
+import utils.TestContext;
 import java.time.Duration;
 
 
 public class Registration {
     private WebDriver driver;
+    private String currentPassword = "";
+    private String currentConfirmPassword = "";
+    private String generatedEmail = "";
+
+    // Shared context to store data across scenarios
+    private TestContext testContext = TestContext.getInstance();
 
     @Given("the admin is on the login page")
     public void the_admin_is_on_the_login_page() {
@@ -62,16 +70,29 @@ public class Registration {
     public void the_admin_enters_valid_email(String email) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         WebElement el = wait.until(ExpectedConditions.elementToBeClickable(By.id("register-email")));
+
+        // Generate unique email if AUTO_GENERATE is specified
+        String emailToUse = email.equals("AUTO_GENERATE")
+            ? EmailGenerator.generateEmailWithTimestamp()
+            : email;
+
+        // Store in both local and shared context
+        this.generatedEmail = emailToUse;
+        testContext.setGeneratedEmail(emailToUse);  // Store in shared context
+
         el.clear();
-        el.sendKeys(email);
+        el.sendKeys(emailToUse);
+
+        System.out.println("✓ Email entered: " + emailToUse);
     }
     @When("^the admin enter valid first password (.+)$")
     public void the_admin_enter_valid_first_password(String fpassword) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         WebElement el = wait.until(ExpectedConditions.elementToBeClickable(By.id("register-password")));
-         el.clear();
-         el.sendKeys(fpassword);
-
+        el.clear();
+        el.sendKeys(fpassword);
+        this.currentPassword = fpassword;
+        System.out.println("[DEBUG] Password entered: " + fpassword);
     }
     @When("^the admin enter valid confirm password (.+)$")
     public void the_admin_enter_valid_confirm_password(String confirmpassword) {
@@ -79,13 +100,32 @@ public class Registration {
         WebElement el = wait.until(ExpectedConditions.elementToBeClickable(By.id("register-confirmPassword")));
         el.clear();
         el.sendKeys(confirmpassword);
-
+        this.currentConfirmPassword = confirmpassword;
+        System.out.println("[DEBUG] Confirm password entered: " + confirmpassword);
     }
     @When("the confirm password is the same as the password")
     public void the_confirm_password_is_the_same_as_the_password() {
-        String password = driver.findElement(By.id("register-password")).getAttribute("value");
-        String confirmPassword = driver.findElement(By.id("register-confirmPassword")).getAttribute("value");
-        Assert.assertEquals(confirmPassword, password, "Confirm password does not match password");
+        // Get values from stored variables (preferred method)
+        System.out.println("[DEBUG] Verifying passwords match...");
+        System.out.println("[DEBUG] Stored password: " + this.currentPassword);
+        System.out.println("[DEBUG] Stored confirm password: " + this.currentConfirmPassword);
+
+        // Also verify from the UI elements as backup
+        String passwordFromUI = driver.findElement(By.id("register-password")).getAttribute("value");
+        String confirmPasswordFromUI = driver.findElement(By.id("register-confirmPassword")).getAttribute("value");
+
+        System.out.println("[DEBUG] Password from UI: " + passwordFromUI);
+        System.out.println("[DEBUG] Confirm password from UI: " + confirmPasswordFromUI);
+
+        // Verify both stored values match
+        Assert.assertEquals(this.currentConfirmPassword, this.currentPassword,
+            "Confirm password does not match password (stored values)");
+
+        // Verify UI values match
+        Assert.assertEquals(confirmPasswordFromUI, passwordFromUI,
+            "Confirm password does not match password (UI values)");
+
+        System.out.println("[DEBUG] ✓ Passwords match successfully!");
     }
     @When("^the admin selects the correct group (.+)$")
     public void the_admin_selects_the_correct_group(String group) {
@@ -113,8 +153,31 @@ public class Registration {
     @When("the admin click the create account button")
     public void the_admin_click_the_create_account_button() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        driver.findElement(By.id("register-submit")).click();
+        try {
+            // Try to find the button using multiple possible selectors
+            WebElement submitBtn = null;
+            try {
+                submitBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("register-submit")));
+            } catch (TimeoutException e) {
+                System.out.println("[DEBUG] Could not find button with id 'register-submit', trying alternative selectors...");
+                try {
+                    submitBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("createAccountBtn")));
+                } catch (TimeoutException e2) {
+                    submitBtn = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//button[contains(text(), 'Create') or contains(text(), 'Register')]")));
+                }
+            }
 
+            if (submitBtn != null) {
+                // Scroll into view before clicking
+                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", submitBtn);
+                Thread.sleep(500);
+                submitBtn.click();
+                System.out.println("[DEBUG] Create account button clicked successfully");
+            }
+        } catch (Exception e) {
+            System.out.println("[ERROR] Failed to click create account button: " + e.getMessage());
+            throw new RuntimeException("Could not click create account button", e);
+        }
     }
     @Then("the successful registration message is displayed")
     public void the_successful_registration_message_is_displayed() {
@@ -166,15 +229,98 @@ public class Registration {
         Thread.sleep(2000);
         System.out.println("[stub] click on admin panel");
     }
+    @Given("click on Approvals button")
+    public void click_on_approvals_button() throws InterruptedException {
+        Thread.sleep(2000);
 
-    @And("^enter email (.+) in the search box$")
-    public void enter_email_in_the_search_box(String email) {
-        System.out.println("[stub] enter email in search box: " + email);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement approvalsButton = wait.until(ExpectedConditions.elementToBeClickable(
+            By.xpath("//button[contains(text(), 'Approvals')]")
+        ));
+
+        // Scroll into view
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", approvalsButton);
+        Thread.sleep(500);
+
+        approvalsButton.click();
+
+        Thread.sleep(1000);
+        System.out.println("✓ Clicked on Approvals button");
+    }
+
+
+
+
+    @And("the admin searches for the registered user by generated email")
+    public void the_admin_searches_for_registered_user_by_generated_email() throws InterruptedException {
+        // Retrieve email from shared context
+        String emailToSearch = testContext.getGeneratedEmail();
+
+        if (emailToSearch == null || emailToSearch.isEmpty()) {
+            throw new RuntimeException("No generated email found in TestContext. Make sure user registered first.");
+        }
+
+        System.out.println("[DEBUG] Retrieved email from TestContext: " + emailToSearch);
+
+        Thread.sleep(2000);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement searchField = wait.until(ExpectedConditions.elementToBeClickable(
+            By.xpath("//input[@type='text' and @placeholder='Search by name or email...']")
+        ));
+
+        searchField.clear();
+        searchField.sendKeys(emailToSearch);
+
+        Thread.sleep(1000);
+        System.out.println("✓ Searched for user with email: " + emailToSearch);
     }
 
     @And("verify that the new register user is displayed in the search results")
     public void verify_that_the_new_register_user_is_displayed_in_the_search_results() {
         System.out.println("[stub] verify new user displayed in search results");
+    }
+
+    @And("verify the generated email appears in search results")
+    public void verify_generated_email_in_search_results() throws InterruptedException {
+        // Retrieve email from shared context
+        String emailToVerify = testContext.getGeneratedEmail();
+
+        if (emailToVerify == null || emailToVerify.isEmpty()) {
+            throw new RuntimeException("No generated email to verify in TestContext");
+        }
+
+        System.out.println("[DEBUG] Verifying email in search results: " + emailToVerify);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        try {
+            // Wait for results to load
+            Thread.sleep(1000);
+
+            // Get page content and check for email
+            String pageSource = driver.getPageSource();
+
+            if (pageSource.contains(emailToVerify)) {
+                System.out.println("✓ Generated email found in search results: " + emailToVerify);
+            } else {
+                throw new AssertionError("Generated email not found in search results: " + emailToVerify);
+            }
+
+            // Also try to find element containing email
+            try {
+                WebElement emailElement = driver.findElement(By.xpath("//*[contains(text(), '" + emailToVerify + "')]"));
+                if (emailElement.isDisplayed()) {
+                    System.out.println("✓ Email element is visible in search results");
+                }
+            } catch (NoSuchElementException e) {
+                System.out.println("[WARNING] Email text not found as separate element, but found in page source");
+            }
+
+        } catch (Exception e) {
+            System.out.println("[ERROR] Failed to verify generated email in results: " + e.getMessage());
+            throw new RuntimeException("Could not verify generated email in search results", e);
+        }
     }
 
     @And("verify if the account status for the new user is \"Inactive\"")
