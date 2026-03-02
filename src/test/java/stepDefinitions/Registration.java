@@ -155,11 +155,15 @@ public class Registration {
 
     @And("click on admin panel")
     public void click_on_admin_panel() throws InterruptedException {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        Thread.sleep(2000);
+
         driver.findElement(By.xpath("//button[contains(@class,'user-pill')]")).click();
-        Thread.sleep(1000);
+
+        Thread.sleep(2000);
+
         driver.findElement(By.xpath("//button[@class='nav-dropdown-item']/span[text()='Admin Panel']/parent::button")).click();
 
+        Thread.sleep(2000);
         System.out.println("[stub] click on admin panel");
     }
 
