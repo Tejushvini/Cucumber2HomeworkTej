@@ -28,8 +28,23 @@ Feature: User Registration
     And click on admin panel
     And click on Approvals button
     And the admin searches for the registered user by generated email
-    And verify the generated email appears in search results
-    And verify if the account status for the new user is "Inactive"
-    And on inactive status to trigger activation popup
-    And click ok button on the activation popup
+    And click the approve button
+    Then approve message is displayed
+
+    #Make user an admin
+  Scenario: Make user an admin
+    Given the admin is on the Users management page
+    And the admin searches for the registered user by generated email in user management
+    And click on user drop down
+    And select admin
+    Then click ok to confirm admin role change
+    And click ok on the successful alert
+    Then user role is changed to admin
+
+  # Login with new approved user and verify admin role
+  Scenario: Login with new user and verify admin access
+    Given the admin is on the login page
+    When the approved user logs in with the generated email
+    Then verify that the user is now an admin
+
 

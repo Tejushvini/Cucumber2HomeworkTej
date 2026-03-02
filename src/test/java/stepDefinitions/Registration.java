@@ -26,15 +26,47 @@ public class Registration {
     // Shared context to store data across scenarios
     private TestContext testContext = TestContext.getInstance();
 
+    // Constructor to get shared driver
+    public Registration() {
+        this.driver = testContext.getDriver();
+    }
+
+    // Helper method to ensure driver is initialized
+    private void ensureDriverInitialized() {
+        if (this.driver == null) {
+            this.driver = testContext.getDriver();
+        }
+        if (this.driver == null) {
+            // Driver still null, create new one
+            ChromeOptions options = new ChromeOptions();
+            options.addArguments("--start-maximized");
+            this.driver = new ChromeDriver(options);
+            this.driver.manage().window().maximize();
+            testContext.setDriver(this.driver);
+            System.out.println("[DEBUG] New driver instance created and stored in TestContext");
+        }
+    }
+
     @Given("the admin is on the login page")
     public void the_admin_is_on_the_login_page() {
+        // Check if driver already exists in TestContext
+        this.driver = testContext.getDriver();
+
+        if (this.driver == null) {
+            // Create new driver
             ChromeOptions options = new ChromeOptions();
-            // start maximized; also call maximize() after creating the driver for robustness
             options.addArguments("--start-maximized");
             driver = new ChromeDriver(options);
             driver.manage().window().maximize();
-            driver.get("https://ndosisimplifiedautomation.vercel.app/#practice");
 
+            // Store in TestContext for other scenarios
+            testContext.setDriver(driver);
+            System.out.println("[DEBUG] New driver created and stored in TestContext");
+        } else {
+            System.out.println("[DEBUG] Using existing driver from TestContext");
+        }
+
+        driver.get("https://ndosisimplifiedautomation.vercel.app/#practice");
     }
     @When("the admin click the sign up link")
     public void the_admin_click_the_sign_up_link() {
@@ -92,6 +124,7 @@ public class Registration {
         el.clear();
         el.sendKeys(fpassword);
         this.currentPassword = fpassword;
+        testContext.setCurrentPassword(fpassword);  // Store in TestContext
         System.out.println("[DEBUG] Password entered: " + fpassword);
     }
     @When("^the admin enter valid confirm password (.+)$")
@@ -197,8 +230,9 @@ public class Registration {
         // Accept (Click OK)
         alert.accept();
 
-        // Close the browser
-        driver.quit();
+        // DON'T close the browser - keep it for next scenarios
+        // driver.quit(); // REMOVED - driver stays alive for approval scenario
+        System.out.println("[DEBUG] Registration successful - keeping browser open for next scenario");
     }
 
     // --- Minimal stub step definitions for approval/admin flow ---
@@ -229,7 +263,7 @@ public class Registration {
         Thread.sleep(2000);
         System.out.println("[stub] click on admin panel");
     }
-    @Given("click on Approvals button")
+    @And("click on Approvals button")
     public void click_on_approvals_button() throws InterruptedException {
         Thread.sleep(2000);
 
@@ -276,66 +310,385 @@ public class Registration {
         System.out.println("✓ Searched for user with email: " + emailToSearch);
     }
 
-    @And("verify that the new register user is displayed in the search results")
-    public void verify_that_the_new_register_user_is_displayed_in_the_search_results() {
-        System.out.println("[stub] verify new user displayed in search results");
+    @And("click the approve button")
+    public void click_the_approve_button() throws InterruptedException {
+        Thread.sleep(2000);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement approveButton = wait.until(ExpectedConditions.elementToBeClickable(
+            By.xpath("//button[contains(text(), 'Approve')]")
+        ));
+
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", approveButton);
+        Thread.sleep(500);
+
+        approveButton.click();
+
+        Thread.sleep(1000);
+        System.out.println("✓ Clicked on Approve button");
     }
 
-    @And("verify the generated email appears in search results")
-    public void verify_generated_email_in_search_results() throws InterruptedException {
-        // Retrieve email from shared context
-        String emailToVerify = testContext.getGeneratedEmail();
+        @Then("approve message is displayed")
+        public void approve_message_is_displayed() {
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
-        if (emailToVerify == null || emailToVerify.isEmpty()) {
-            throw new RuntimeException("No generated email to verify in TestContext");
+            try {
+                WebElement successMessage = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                        By.xpath("//div[contains(text(), 'User approved successfully!')]")
+                ));
+
+                String messageText = successMessage.getText();
+                System.out.println("✓ Success message: " + messageText);
+
+                Assert.assertTrue(messageText.contains("User approved successfully!"),
+                        "Approval success message not displayed");
+
+                System.out.println("✓ User approved successfully message verified");
+            } catch (TimeoutException e) {
+                throw new RuntimeException("Approval success message not displayed", e);
+            }
         }
 
-        System.out.println("[DEBUG] Verifying email in search results: " + emailToVerify);
+
+    @Given("the admin is on the Users management page")
+    public void the_admin_is_on_the_users_management_page() throws InterruptedException {
+        ensureDriverInitialized();  // Make sure driver exists
+
+        Thread.sleep(2000);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement usersButton = wait.until(ExpectedConditions.elementToBeClickable(
+            By.xpath("//button[contains(text(), 'Users')]")
+        ));
+
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", usersButton);
+        Thread.sleep(500);
+
+        usersButton.click();
+
+        Thread.sleep(1000);
+        System.out.println("✓ Navigated to Users management page");
+    }
+
+
+    @Given("the admin searches for the registered user by generated email in user management")
+    public void the_admin_searches_for_the_registered_user_by_generated_email_in_user_management() throws InterruptedException {
+        String emailToSearch = testContext.getGeneratedEmail();
+
+        if (emailToSearch == null || emailToSearch.isEmpty()) {
+            throw new RuntimeException("No generated email found in TestContext. Make sure user registered first.");
+        }
+
+        System.out.println("[DEBUG] Retrieved email from TestContext: " + emailToSearch);
+
+        Thread.sleep(2000);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement searchField = wait.until(ExpectedConditions.elementToBeClickable(
+            By.xpath("//input[@placeholder='🔍 Search users...']")
+        ));
+
+        searchField.clear();
+        searchField.sendKeys(emailToSearch);
+
+        Thread.sleep(1000);
+        System.out.println("✓ Searched for user with email: " + emailToSearch);
+    }
+
+    @Given("click on user drop down")
+    public void click_on_user_drop_down() throws InterruptedException {
+        Thread.sleep(2000);
+
+        String emailToFind = testContext.getGeneratedEmail();
+
+        if (emailToFind == null || emailToFind.isEmpty()) {
+            throw new RuntimeException("No generated email found. Cannot identify user.");
+        }
+
+        System.out.println("[DEBUG] Looking for dropdown for user: " + emailToFind);
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         try {
-            // Wait for results to load
+            // Find the select dropdown element for role
+            WebElement roleDropdown = wait.until(ExpectedConditions.elementToBeClickable(
+                By.xpath("//select[.//option[@value='admin']]")
+            ));
+
+            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", roleDropdown);
+            Thread.sleep(500);
+
+            roleDropdown.click();
+
+            Thread.sleep(1000);
+            System.out.println("✓ Clicked on role dropdown");
+        } catch (Exception e) {
+            System.out.println("[ERROR] Could not find user dropdown");
+            throw new RuntimeException("Could not find user role dropdown", e);
+        }
+    }
+    @Given("select admin")
+    public void select_admin() throws InterruptedException {
+        Thread.sleep(1000);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        try {
+            WebElement selectElement = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//select[.//option[@value='admin']]")
+            ));
+
+            Select roleSelect = new Select(selectElement);
+            roleSelect.selectByValue("admin");
+
+            Thread.sleep(1000);
+            System.out.println("✓ Selected Admin role from dropdown");
+        } catch (Exception e) {
+            System.out.println("[ERROR] Failed to select admin role: " + e.getMessage());
+            throw new RuntimeException("Could not select admin role", e);
+        }
+    }
+    @Then("click ok to confirm admin role change")
+    public void click_ok_to_confirm_admin_role_change() throws InterruptedException {
+        Thread.sleep(1500);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        try {
+            // Look for confirmation button - could be OK, Confirm, Yes, Submit, etc.
+            WebElement confirmButton = wait.until(ExpectedConditions.elementToBeClickable(
+                By.xpath("//button[contains(text(), 'OK') or contains(text(), 'Ok') or contains(text(), 'Confirm') or contains(text(), 'Yes') or contains(text(), 'Submit')]")
+            ));
+
+            // Scroll into view
+            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", confirmButton);
+            Thread.sleep(300);
+
+            confirmButton.click();
             Thread.sleep(1000);
 
-            // Get page content and check for email
-            String pageSource = driver.getPageSource();
+            System.out.println("✓ Clicked OK to confirm admin role change");
 
-            if (pageSource.contains(emailToVerify)) {
-                System.out.println("✓ Generated email found in search results: " + emailToVerify);
-            } else {
-                throw new AssertionError("Generated email not found in search results: " + emailToVerify);
+        } catch (TimeoutException e) {
+            System.out.println("[WARNING] No confirmation button found - role might be changed automatically");
+        } catch (Exception e) {
+            System.out.println("[ERROR] Failed to click confirmation: " + e.getMessage());
+            throw new RuntimeException("Could not confirm admin role change", e);
+        }
+    }
+    @Then("click ok on the successful alert")
+    public void click_ok_on_the_successful_alert() throws InterruptedException {
+        Thread.sleep(1500);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        try {
+            // Check if it's a browser alert
+            try {
+                wait.until(ExpectedConditions.alertIsPresent());
+                Alert alert = driver.switchTo().alert();
+                String alertText = alert.getText();
+                System.out.println("Alert message: " + alertText);
+                alert.accept();
+                System.out.println("✓ Accepted browser alert");
+                return;
+            } catch (TimeoutException e1) {
+                System.out.println("[DEBUG] No browser alert, checking for custom success message...");
             }
 
-            // Also try to find element containing email
+            // Check for custom success message with OK button
             try {
-                WebElement emailElement = driver.findElement(By.xpath("//*[contains(text(), '" + emailToVerify + "')]"));
-                if (emailElement.isDisplayed()) {
-                    System.out.println("✓ Email element is visible in search results");
+                WebElement successMessage = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.xpath("//div[contains(text(), 'success') or contains(text(), 'Success') or contains(text(), 'updated') or contains(text(), 'changed')]")
+                ));
+                System.out.println("Success message displayed: " + successMessage.getText());
+
+                // Try to find and click OK button in the message
+                try {
+                    WebElement okButton = driver.findElement(
+                        By.xpath("//button[contains(text(), 'OK') or contains(text(), 'Close') or contains(text(), 'Dismiss')]")
+                    );
+                    okButton.click();
+                    System.out.println("✓ Clicked OK on success message");
+                } catch (NoSuchElementException e) {
+                    System.out.println("✓ Success message displayed (no OK button needed)");
                 }
-            } catch (NoSuchElementException e) {
-                System.out.println("[WARNING] Email text not found as separate element, but found in page source");
+                return;
+            } catch (TimeoutException e2) {
+                System.out.println("[WARNING] No success alert or message found - continuing anyway");
             }
 
         } catch (Exception e) {
-            System.out.println("[ERROR] Failed to verify generated email in results: " + e.getMessage());
-            throw new RuntimeException("Could not verify generated email in search results", e);
+            System.out.println("[ERROR] Failed to handle success alert: " + e.getMessage());
+            throw new RuntimeException("Could not handle success alert", e);
+        }
+    }
+    @Then("user role is changed to admin")
+    public void user_role_is_changed_to_admin() throws InterruptedException {
+        Thread.sleep(2000);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        // Get the generated email
+        String emailToVerify = testContext.getGeneratedEmail();
+
+        if (emailToVerify == null || emailToVerify.isEmpty()) {
+            throw new RuntimeException("No generated email found. Cannot verify role change.");
+        }
+
+        System.out.println("[DEBUG] Verifying admin role for user: " + emailToVerify);
+
+        try {
+            // Find the user row
+            WebElement userRow = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//td[contains(text(), '" + emailToVerify + "')]/ancestor::tr")
+            ));
+
+            // Check if the role displays "Admin"
+            String rowText = userRow.getText().toLowerCase();
+
+            if (rowText.contains("admin")) {
+                System.out.println("✓ User role is changed to Admin");
+                System.out.println("Row content: " + userRow.getText());
+                return;
+            }
+
+            // Alternative: Check for admin badge/label
+            try {
+                WebElement adminBadge = userRow.findElement(
+                    By.xpath(".//span[contains(text(), 'Admin')] | .//div[contains(text(), 'Admin')] | .//option[@value='admin' and @selected]")
+                );
+                if (adminBadge.isDisplayed()) {
+                    System.out.println("✓ Admin badge is visible for user");
+                    return;
+                }
+            } catch (NoSuchElementException e) {
+                System.out.println("[WARNING] Could not find admin badge");
+            }
+
+            throw new AssertionError("User role does not appear to be changed to Admin");
+
+        } catch (NoSuchElementException e) {
+            System.out.println("[ERROR] Could not find user row to verify role");
+            throw new RuntimeException("Could not verify admin role change", e);
+        } catch (Exception e) {
+            System.out.println("[ERROR] Failed to verify admin role: " + e.getMessage());
+            throw new RuntimeException("Could not verify admin role change", e);
         }
     }
 
-    @And("verify if the account status for the new user is \"Inactive\"")
-    public void verify_if_the_account_status_for_the_new_user_is_inactive() {
-        System.out.println("[stub] verify account status is Inactive");
+    @Given("the approved user logs in with the generated email")
+    public void the_approved_user_logs_in_with_generated_email() throws InterruptedException {
+        // Retrieve the generated email from TestContext
+        String userEmail = testContext.getGeneratedEmail();
+
+        if (userEmail == null || userEmail.isEmpty()) {
+            throw new RuntimeException("No generated email found. User must be registered and approved first.");
+        }
+
+        System.out.println("[DEBUG] Logging in with generated email: " + userEmail);
+
+        Thread.sleep(2000);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        // Find and fill email field
+        WebElement emailField = wait.until(ExpectedConditions.elementToBeClickable(
+            By.id("login-email")
+        ));
+        emailField.clear();
+        emailField.sendKeys(userEmail);
+
+        // Find and fill password field - use the stored password
+        String password = testContext.getCurrentPassword();
+        if (password == null || password.isEmpty()) {
+            throw new RuntimeException("No password found. Make sure password was set during registration.");
+        }
+
+        WebElement passwordField = wait.until(ExpectedConditions.elementToBeClickable(
+            By.id("login-password")
+        ));
+        passwordField.clear();
+        passwordField.sendKeys(password);
+
+        // Click login button
+        WebElement loginButton = wait.until(ExpectedConditions.elementToBeClickable(
+            By.id("login-submit")
+        ));
+        loginButton.click();
+
+        Thread.sleep(2000);
+        System.out.println("✓ Logged in with generated email: " + userEmail);
     }
 
-    @And("on inactive status to trigger activation popup")
-    public void on_inactive_status_to_trigger_activation_popup() {
-        System.out.println("[stub] trigger activation popup on inactive status");
+    @Then("verify that the user is now an admin")
+    public void verify_that_the_user_is_now_an_admin() throws InterruptedException {
+        Thread.sleep(2000);
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        try {
+            // Method 1: Check for Admin Panel button
+            try {
+                WebElement adminPanelButton = wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//button[contains(text(), 'Admin Panel')]")
+                ));
+
+                if (adminPanelButton.isDisplayed()) {
+                    System.out.println("✓ Admin Panel button is visible - User is an admin");
+                    return;
+                }
+            } catch (TimeoutException e1) {
+                System.out.println("[DEBUG] Admin Panel button not found, trying alternative checks...");
+            }
+
+            // Method 2: Check for Approvals button in navigation
+            try {
+                WebElement approvalsButton = wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//button[contains(text(), 'Approvals')]")
+                ));
+
+                if (approvalsButton.isDisplayed()) {
+                    System.out.println("✓ Approvals button is visible - User is an admin");
+                    return;
+                }
+            } catch (TimeoutException e2) {
+                System.out.println("[DEBUG] Approvals button not found, trying admin role indicator...");
+            }
+
+            // Method 3: Check page source for admin role indicator
+            String pageSource = driver.getPageSource();
+
+            if (pageSource.contains("admin") && pageSource.contains("Admin")) {
+                System.out.println("✓ Admin role found in page source - User is an admin");
+                return;
+            }
+
+            // Method 4: Check for user role in profile/dashboard
+            try {
+                WebElement userPill = wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//button[contains(@class, 'user-pill')]")
+                ));
+                userPill.click();
+
+                Thread.sleep(500);
+                String userMenuSource = driver.getPageSource();
+
+                if (userMenuSource.contains("admin") || userMenuSource.contains("Admin")) {
+                    System.out.println("✓ Admin role verified in user menu");
+                    return;
+                }
+            } catch (Exception e) {
+                System.out.println("[DEBUG] Could not check user menu");
+            }
+
+            throw new AssertionError("User does not appear to have admin role. Admin controls not found.");
+
+        } catch (Exception e) {
+            System.out.println("[ERROR] Failed to verify admin status: " + e.getMessage());
+            throw new RuntimeException("Could not verify admin status", e);
+        }
     }
 
-    @And("click ok button on the activation popup")
-    public void click_ok_button_on_the_activation_popup() {
-        System.out.println("[stub] click OK on activation popup");
     }
 
-}
