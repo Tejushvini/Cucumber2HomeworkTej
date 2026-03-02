@@ -26,46 +26,12 @@ public class Registration {
     // Shared context to store data across scenarios
     private TestContext testContext = TestContext.getInstance();
 
-    // Constructor to get shared driver
-    public Registration() {
-        this.driver = testContext.getDriver();
-    }
-
-    // Helper method to ensure driver is initialized
-    private void ensureDriverInitialized() {
-        if (this.driver == null) {
-            this.driver = testContext.getDriver();
-        }
-        if (this.driver == null) {
-            // Driver still null, create new one
-            ChromeOptions options = new ChromeOptions();
-            options.addArguments("--start-maximized");
-            this.driver = new ChromeDriver(options);
-            this.driver.manage().window().maximize();
-            testContext.setDriver(this.driver);
-            System.out.println("[DEBUG] New driver instance created and stored in TestContext");
-        }
-    }
-
     @Given("the admin is on the login page")
     public void the_admin_is_on_the_login_page() {
-        // Check if driver already exists in TestContext
-        this.driver = testContext.getDriver();
-
-        if (this.driver == null) {
-            // Create new driver
-            ChromeOptions options = new ChromeOptions();
-            options.addArguments("--start-maximized");
-            driver = new ChromeDriver(options);
-            driver.manage().window().maximize();
-
-            // Store in TestContext for other scenarios
-            testContext.setDriver(driver);
-            System.out.println("[DEBUG] New driver created and stored in TestContext");
-        } else {
-            System.out.println("[DEBUG] Using existing driver from TestContext");
-        }
-
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--start-maximized");
+        driver = new ChromeDriver(options);
+        driver.manage().window().maximize();
         driver.get("https://ndosisimplifiedautomation.vercel.app/#practice");
     }
     @When("the admin click the sign up link")
@@ -230,9 +196,8 @@ public class Registration {
         // Accept (Click OK)
         alert.accept();
 
-        // DON'T close the browser - keep it for next scenarios
-        // driver.quit(); // REMOVED - driver stays alive for approval scenario
-        System.out.println("[DEBUG] Registration successful - keeping browser open for next scenario");
+        // Close the browser
+        driver.quit();
     }
 
     // --- Minimal stub step definitions for approval/admin flow ---
@@ -352,7 +317,6 @@ public class Registration {
 
     @Given("the admin is on the Users management page")
     public void the_admin_is_on_the_users_management_page() throws InterruptedException {
-        ensureDriverInitialized();  // Make sure driver exists
 
         Thread.sleep(2000);
 
@@ -452,11 +416,38 @@ public class Registration {
     public void click_ok_to_confirm_admin_role_change() throws InterruptedException {
         Thread.sleep(1500);
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-
         try {
-            // Look for confirmation button - could be OK, Confirm, Yes, Submit, etc.
-            WebElement confirmButton = wait.until(ExpectedConditions.elementToBeClickable(
+            // First, check if there's already an alert present (without waiting)
+            try {
+                Alert alert = driver.switchTo().alert();
+                String alertText = alert.getText();
+                System.out.println("Browser alert detected immediately: " + alertText);
+                alert.accept();
+                System.out.println("✓ Accepted browser alert to confirm role change");
+                Thread.sleep(1000);
+                return;
+            } catch (NoAlertPresentException e) {
+                System.out.println("[DEBUG] No immediate alert, waiting for alert or button...");
+            }
+
+            // Wait a bit for alert to appear
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
+            try {
+                wait.until(ExpectedConditions.alertIsPresent());
+                Alert alert = driver.switchTo().alert();
+                String alertText = alert.getText();
+                System.out.println("Browser alert detected after wait: " + alertText);
+                alert.accept();
+                System.out.println("✓ Accepted browser alert to confirm role change");
+                Thread.sleep(1000);
+                return;
+            } catch (TimeoutException e) {
+                System.out.println("[DEBUG] No browser alert, checking for confirmation button...");
+            }
+
+            // If no browser alert, look for confirmation button
+            WebDriverWait buttonWait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            WebElement confirmButton = buttonWait.until(ExpectedConditions.elementToBeClickable(
                 By.xpath("//button[contains(text(), 'OK') or contains(text(), 'Ok') or contains(text(), 'Confirm') or contains(text(), 'Yes') or contains(text(), 'Submit')]")
             ));
 

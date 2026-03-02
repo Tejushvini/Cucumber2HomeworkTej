@@ -33,7 +33,11 @@ Feature: User Registration
 
     #Make user an admin
   Scenario: Make user an admin
-    Given the admin is on the Users management page
+    Given the admin is on the login page
+    And admin user logs in as admin admin@gmail.com with password @12345678
+    And click on admin button
+    And click on admin panel
+    And the admin is on the Users management page
     And the admin searches for the registered user by generated email in user management
     And click on user drop down
     And select admin
