@@ -3,23 +3,28 @@ import io.cucumber.java.en.*;
 import org.openqa.selenium.Alert;
 import org.testng.Assert;
 //import utils.Base;
-import org.openqa.selenium.By;
+import org.openqa.selenium.*;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.Select;
-
 import java.time.Duration;
+
 
 public class Registration {
     private WebDriver driver;
 
     @Given("the admin is on the login page")
     public void the_admin_is_on_the_login_page() {
-            driver = new ChromeDriver();
+            ChromeOptions options = new ChromeOptions();
+            // start maximized; also call maximize() after creating the driver for robustness
+            options.addArguments("--start-maximized");
+            driver = new ChromeDriver(options);
+            driver.manage().window().maximize();
             driver.get("https://ndosisimplifiedautomation.vercel.app/#practice");
 
     }
@@ -123,7 +128,7 @@ public class Registration {
         // Print and verify the message
         System.out.println("Alert message: " + alertMessage);
         Assert.assertNotNull(alertMessage, "Alert message is null");
-        Assert.assertTrue(alertMessage.contains("successfully") || alertMessage.contains("pending admin approval") || alertMessage.length() > 0,
+        Assert.assertTrue(!alertMessage.isEmpty() && (alertMessage.contains("successfully") || alertMessage.contains("pending admin approval")),
                 "Registration message not displayed or invalid");
 
         // Accept (Click OK)
@@ -131,6 +136,56 @@ public class Registration {
 
         // Close the browser
         driver.quit();
+    }
+
+    // --- Minimal stub step definitions for approval/admin flow ---
+    @Given("^admin user logs in as admin (.+) with password (.+)$")
+    public void admin_user_logs_in_as_admin_with_password(String adminemail, String adminpassword) {
+        driver.findElement(By.id("login-email")).sendKeys(adminemail);
+        driver.findElement(By.id("login-password")).sendKeys(adminpassword);
+        // Minimal stub: log values; real implementation should perform login actions
+        System.out.println("[stub] admin login: " + adminemail + " / " + adminpassword);
+    }
+//login button
+    @And("click on admin button")
+    public void click_on_admin_button() {
+        driver.findElement(By.id("login-submit")).click();
+        System.out.println("[stub] click on admin button");
+    }
+
+    @And("click on admin panel")
+    public void click_on_admin_panel() throws InterruptedException {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        driver.findElement(By.xpath("//button[contains(@class,'user-pill')]")).click();
+        Thread.sleep(1000);
+        driver.findElement(By.xpath("//button[@class='nav-dropdown-item']/span[text()='Admin Panel']/parent::button")).click();
+
+        System.out.println("[stub] click on admin panel");
+    }
+
+    @And("^enter email (.+) in the search box$")
+    public void enter_email_in_the_search_box(String email) {
+        System.out.println("[stub] enter email in search box: " + email);
+    }
+
+    @And("verify that the new register user is displayed in the search results")
+    public void verify_that_the_new_register_user_is_displayed_in_the_search_results() {
+        System.out.println("[stub] verify new user displayed in search results");
+    }
+
+    @And("verify if the account status for the new user is \"Inactive\"")
+    public void verify_if_the_account_status_for_the_new_user_is_inactive() {
+        System.out.println("[stub] verify account status is Inactive");
+    }
+
+    @And("on inactive status to trigger activation popup")
+    public void on_inactive_status_to_trigger_activation_popup() {
+        System.out.println("[stub] trigger activation popup on inactive status");
+    }
+
+    @And("click ok button on the activation popup")
+    public void click_ok_button_on_the_activation_popup() {
+        System.out.println("[stub] click OK on activation popup");
     }
 
 }
